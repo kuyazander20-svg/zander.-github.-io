@@ -702,3 +702,301 @@ npm install --save-dev nodemon
   "dev": "nodemon server.js"
 }
 npm run dev
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+// -------------------
+// DATABASE CONNECTION
+// -------------------
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/code_website';
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✅ Connected to MongoDB Database'))
+  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+// -------------------
+// DATABASE MODELS
+// -------------------
+
+// Model 1: Projects
+const projectSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  code: {
+    type: String,
+    required: true
+  },
+  language: {
+    type: String,
+    default: 'JavaScript'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+const Project = mongoose.model('Project', projectSchema);
+
+// Model 2: Code Snippets (for your code runner)
+const snippetSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  html: String,
+  css: String,
+  js: String,
+  author: { type: String, default: 'Anonymous' },
+  createdAt: { type: Date, default: Date.now }
+});
+const Snippet = mongoose.model('Snippet', snippetSchema);
+
+// Model 3: Users (optional — for login system)
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  joinedAt: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+// -------------------
+// PROJECTS API
+// -------------------
+
+// CREATE: Add new project
+app.post('/api/projects', async (req, res) => {
+  try {
+    const project = new Project(req.body);
+    await project.save();
+    res.status(201).json({ success: true, data: project });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// READ: Get all projects
+app.get('/api/projects', async (req, res) => {
+  try {
+    const projects = await Project.find().sort({ createdAt: -1 }); // Newest first
+    res.json({ success: true, count: projects.length, data: projects });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// READ: Get single project by ID
+app.get('/api/projects/:id', async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    res.json({ success: true, data: project });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// UPDATE: Edit project
+app.put('/api/projects/:id', async (req, res) => {
+  try {
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true } // Return updated data
+    );
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    res.json({ success: true, data: project });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE: Remove project
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    const project = await Project.findByIdAndDelete(req.params.id);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    res.json({ success: true, message: 'Project deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -------------------
+// SNIPPETS API (Save code from your code runner)
+// -------------------
+
+// Save new code snippet
+app.post('/api/snippets', async (req, res) => {
+  try {
+    const snippet = new Snippet(req.body);
+    await snippet.save();
+    res.status(201).json({ success: true, data: snippet });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Get all saved snippets
+app.get('/api/snippets', async (req, res) => {
+  try {
+    const snippets = await Snippet.find().sort({ createdAt: -1 });
+    res.json({ success: true, count: snippets.length, data: snippets });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Start Server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
+});
+PORT=3000
+# Local MongoDB
+MONGODB_URI=mongodb://localhost:27017/code_website
+# OR MongoDB Atlas (cloud):
+# MONGODB_URI=mongodb+srv://username:password@cluster0.abc123.mongodb.net/code_website
+const mysql = require('mysql2/promise');
+
+// Create connection pool
+const db = mysql.createPool({
+  host: 'localhost',
+  user: 'root',
+  password: 'your_mysql_password',
+  database: 'code_website',
+  waitForConnections: true,
+  connectionLimit: 10
+});
+
+// Test connection
+async function testDB() {
+  try {
+    const connection = await db.getConnection();
+    console.log('✅ Connected to MySQL Database');
+    connection.release();
+  } catch (err) {
+    console.error('❌ MySQL Connection Error:', err);
+  }
+}
+testDB();
+
+// Example: Get all projects
+app.get('/api/projects', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM projects ORDER BY created_at DESC');
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+CREATE DATABASE IF NOT EXISTS code_website;
+USE code_website;
+
+CREATE TABLE IF NOT EXISTS projects (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  code TEXT NOT NULL,
+  language VARCHAR(50) DEFAULT 'JavaScript',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+// Save Project to Database
+async function saveProject(projectData) {
+  try {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(projectData)
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('✅ Project saved to database!');
+      loadProjects(); // Refresh list
+    }
+  } catch (err) {
+    console.error('Error:', err);
+  }
+}
+
+// Load Projects from Database
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/projects');
+    const data = await res.json();
+    if (data.success) {
+      displayProjects(data.data);
+    }
+  } catch (err) {
+    console.error('Error loading projects:', err);
+  }
+}
+
+// Save Code Snippet from Code Runner
+async function saveSnippet() {
+  const snippet = {
+    name: prompt('Enter snippet name:'),
+    html: document.getElementById('htmlCode').value,
+    css: document.getElementById('cssCode').value,
+    js: document.getElementById('jsCode').value
+  };
+
+  const res = await fetch('/api/snippets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(snippet)
+  });
+  const data = await res.json();
+  if (data.success) alert('✅ Snippet saved!');
+}
+
+// Display Projects
+function displayProjects(projects) {
+  const container = document.getElementById('projectsContainer');
+  container.innerHTML = '';
+  projects.forEach(p => {
+    container.innerHTML += `
+      <div class="project-card">
+        <h3>${p.title}</h3>
+        <p>${p.description}</p>
+        <small>${new Date(p.createdAt).toLocaleDateString()}</small>
+        <pre><code>${p.code}</code></pre>
+        <button onclick="deleteProject('${p._id}')">Delete</button>
+      </div>
+    `;
+  });
+}
+
+// Delete Project
+async function deleteProject(id) {
+  if (!confirm('Delete this project?')) return;
+  await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+  loadProjects();
+}
+
+// Load on page start
+document.addEventListener('DOMContentLoaded', loadProjects);
+# Start MongoDB (if local)
+mongod
+
+# Run your website
+npm run dev
+Feature	Status
+✅ MongoDB database connection	Done
+✅ 3 Data Models (Projects, Snippets, Users)	Done
+✅ Full CRUD API endpoints	Done
+✅ Frontend ↔ Database integration	Done
+✅ MySQL alternative option	Done
+✅ Data persists after server restart	Done
+✅ Auto timestamps for all entries	Done
