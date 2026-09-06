@@ -1,4 +1,4 @@
-my-programming-site/
+John Zander Guerrero website
 ├─ index.html      (Main content)
 ├─ style.css       (Design/styling)
 └─ script.js       (Interactive features)
